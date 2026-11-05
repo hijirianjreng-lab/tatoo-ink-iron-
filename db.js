@@ -45,7 +45,6 @@ export async function init() {
     );
   `);
 
-  // Safe migration for existing tables that predate image_data/mime_type
   await pool.query(`ALTER TABLE artist_portfolio ADD COLUMN IF NOT EXISTS image_data BYTEA;`);
   await pool.query(`ALTER TABLE artist_portfolio ADD COLUMN IF NOT EXISTS mime_type TEXT;`);
 
@@ -92,6 +91,21 @@ export async function init() {
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // Currency Settings Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS studio_settings (
+      id SERIAL PRIMARY KEY,
+      currency_symbol TEXT NOT NULL DEFAULT '$',
+      currency_code   TEXT NOT NULL DEFAULT 'AUD'
+    );
+  `);
+
+  // Insert default settings if table is empty
+  const settingsCheck = await pool.query('SELECT COUNT(*) FROM studio_settings');
+  if (parseInt(settingsCheck.rows[0].count) === 0) {
+    await pool.query(`INSERT INTO studio_settings (currency_symbol, currency_code) VALUES ('$', 'AUD')`);
+  }
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(artist_id, slot_start);`);
