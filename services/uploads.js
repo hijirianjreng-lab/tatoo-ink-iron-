@@ -1,7 +1,7 @@
 // ink-studio/services/uploads.js
 import multer from 'multer';
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB per image
+const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 export const portfolioUpload = multer({
