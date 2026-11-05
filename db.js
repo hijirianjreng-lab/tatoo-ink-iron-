@@ -1,63 +1,109 @@
-import Database from 'better-sqlite3';
-const db = new Database('studio.db');
+// ink-studio/db.js
+import pg from 'pg';
+import 'dotenv/config';
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS artists (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  bio TEXT,
-  hourly_rate REAL NOT NULL,
-  deposit_amount REAL NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  is_active INTEGER DEFAULT 1
-);
+const { Pool } = pg;
 
-CREATE TABLE IF NOT EXISTS artist_portfolio (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  artist_id INTEGER NOT NULL REFERENCES artists(id),
-  image_url TEXT NOT NULL,
-  caption TEXT,
-  sort_order INTEGER DEFAULT 0
-);
+// Render provides DATABASE_URL. Locally, put it in .env.
+// Render's internal URL works only from inside Render; use the external URL locally.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('render.com')
+    ? { rejectUnauthorized: false }
+    : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000
+});
 
-CREATE TABLE IF NOT EXISTS payment_methods (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  is_active INTEGER DEFAULT 1,
-  sort_order INTEGER DEFAULT 0,
-  instructions TEXT,
-  fields TEXT NOT NULL DEFAULT '{}'
-);
+pool.on('error', (err) => {
+  console.error('[pg pool error]', err);
+});
 
-CREATE TABLE IF NOT EXISTS bookings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  artist_id INTEGER NOT NULL REFERENCES artists(id),
-  customer_name TEXT NOT NULL,
-  customer_email TEXT NOT NULL,
-  customer_phone TEXT,
-  slot_start TEXT NOT NULL,
-  slot_end TEXT NOT NULL,
-  status TEXT DEFAULT 'pending_payment',
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(artist_id, slot_start)
-);
+/**
+ * Create tables if they don't exist.
+ * Call once at server startup (await init()).
+ */
+export async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS artists (
+      id            SERIAL PRIMARY KEY,
+      name          TEXT NOT NULL,
+      slug          TEXT UNIQUE NOT NULL,
+      bio           TEXT,
+      hourly_rate   NUMERIC(10,2) NOT NULL,
+      deposit_amount NUMERIC(10,2) NOT NULL,
+      is_active     INTEGER NOT NULL DEFAULT 1,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
-CREATE TABLE IF NOT EXISTS payments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  booking_id INTEGER NOT NULL REFERENCES bookings(id),
-  payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id),
-  reference_number TEXT UNIQUE NOT NULL,
-  amount REAL NOT NULL,
-  status TEXT DEFAULT 'pending',
-  proof_url TEXT,
-  confirmed_by TEXT,
-  confirmed_at TEXT,
-  confirmation_note TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS artist_portfolio (
+      id         SERIAL PRIMARY KEY,
+      artist_id  INTEGER NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
+      image_url  TEXT NOT NULL,
+      caption    TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
-CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(artist_id, slot_start);
-`);
-export default db;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payment_methods (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT NOT NULL,
+      slug         TEXT UNIQUE NOT NULL,
+      is_active    INTEGER NOT NULL DEFAULT 1,
+      sort_order   INTEGER NOT NULL DEFAULT 0,
+      instructions TEXT,
+      fields       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id              SERIAL PRIMARY KEY,
+      artist_id       INTEGER NOT NULL REFERENCES artists(id),
+      customer_name   TEXT NOT NULL,
+      customer_email  TEXT NOT NULL,
+      customer_phone  TEXT,
+      slot_start      TIMESTAMPTZ NOT NULL,
+      slot_end        TIMESTAMPTZ NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'pending_payment',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (artist_id, slot_start)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id                 SERIAL PRIMARY KEY,
+      booking_id         INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+      payment_method_id  INTEGER NOT NULL REFERENCES payment_methods(id),
+      reference_number   TEXT UNIQUE NOT NULL,
+      amount             NUMERIC(10,2) NOT NULL,
+      status             TEXT NOT NULL DEFAULT 'pending',
+      proof_url          TEXT,
+      confirmed_by       TEXT,
+      confirmed_at       TIMESTAMPTZ,
+      confirmation_note  TEXT,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(artist_id, slot_start);`);
+
+  console.log('[db] schema ready');
+}
+
+/**
+ * Graceful shutdown helper.
+ */
+export async function close() {
+  await pool.end();
+}
+
+export default pool;
