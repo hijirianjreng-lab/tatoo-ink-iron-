@@ -96,12 +96,6 @@
   </div>
 
   <!-- ============ ARTIST MODAL ============ -->
-  <div class="form-group">
-  <label class="label">Portfolio images</label>
-  <div id="portfolio-grid" class="grid grid--auto" style="margin-bottom:12px"></div>
-  <input type="file" id="portfolio-file" accept="image/jpeg,image/png,image/webp" class="input">
-  <button type="button" class="btn btn--sm btn--accent mt-1" id="upload-portfolio-btn">Upload</button>
-</div>
   <div class="modal-backdrop" id="artist-modal">
     <div class="modal">
       <h3 class="modal__title" id="artist-modal-title">Add Artist</h3>
@@ -129,6 +123,15 @@
             <input type="number" class="input" id="artist-deposit" step="0.01" min="0" required>
           </div>
         </div>
+
+        <!-- Portfolio upload -->
+        <div class="form-group">
+          <label class="label">Portfolio images</label>
+          <div id="portfolio-grid" class="grid grid--auto" style="margin-bottom:12px"></div>
+          <input type="file" id="portfolio-file" accept="image/jpeg,image/png,image/webp,image/gif" class="input">
+          <button type="button" class="btn btn--sm btn--accent mt-1" id="upload-portfolio-btn">Upload</button>
+        </div>
+
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" data-close-modal>Cancel</button>
           <button type="submit" class="btn btn--accent">Save</button>
