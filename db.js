@@ -31,16 +31,24 @@ export async function init() {
       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS artist_portfolio (
       id         SERIAL PRIMARY KEY,
       artist_id  INTEGER NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
-      image_url  TEXT NOT NULL,
+      image_url  TEXT,
+      image_data BYTEA,
+      mime_type  TEXT,
       caption    TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // Safe migration for existing tables that predate image_data/mime_type
+  await pool.query(`ALTER TABLE artist_portfolio ADD COLUMN IF NOT EXISTS image_data BYTEA;`);
+  await pool.query(`ALTER TABLE artist_portfolio ADD COLUMN IF NOT EXISTS mime_type TEXT;`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS payment_methods (
       id           SERIAL PRIMARY KEY,
@@ -53,6 +61,7 @@ export async function init() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bookings (
       id             SERIAL PRIMARY KEY,
@@ -67,6 +76,7 @@ export async function init() {
       UNIQUE (artist_id, slot_start)
     );
   `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS payments (
       id                SERIAL PRIMARY KEY,
@@ -82,8 +92,10 @@ export async function init() {
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(artist_id, slot_start);`);
+
   console.log('[db] schema ready');
 }
 
