@@ -10,15 +10,25 @@ import payments from './routes/payments.js';
 import bookings from './routes/bookings.js';
 import artists from './routes/artists.js';
 import paymentMethods from './routes/paymentMethods.js';
+import portfolio from './routes/portfolio.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set('trust proxy', 1); // Render sits behind a proxy
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+// Block direct access to private folder
+app.use('/private', (req, res) => res.status(404).end());
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Secret admin panel route — path from env
+app.get(`/${process.env.ADMIN_PATH || 'admin-secret'}`, (req, res) => {
+  res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
@@ -55,6 +65,7 @@ app.use('/api/bookings', bookings);
 app.use('/api/payments', payments);
 app.use('/api/artists', artists);
 app.use('/api/payment-methods', paymentMethods);
+app.use('/api/portfolio', portfolio);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
