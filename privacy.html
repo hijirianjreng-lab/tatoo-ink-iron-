@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Ink Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="brand">Ink Studio</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/#book">Book</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container container--narrow">
+      <p class="eyebrow">Legal</p>
+      <h1 class="mb-3">Privacy Policy</h1>
+      <p class="muted small mb-3">Last updated: <span id="updated"></span></p>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">What we collect</h3>
+        <p>When you book a session we collect:</p>
+        <ul style="margin-left:20px;color:var(--muted);line-height:1.9">
+          <li>Your name, email address, and (optionally) phone number</li>
+          <li>The artist, date, and time of your booking</li>
+          <li>The payment method you selected and the amount of your deposit</li>
+          <li>Any reference images you choose to share with your artist</li>
+        </ul>
+        <p class="mt-2">We do <strong>not</strong> collect or store your bank account details, card numbers, or PayPal credentials. Payment is made directly through your chosen method.</p>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">Why we collect it</h3>
+        <ul style="margin-left:20px;color:var(--muted);line-height:1.9">
+          <li>To reserve your session with the artist you chose</li>
+          <li>To send you a receipt and booking confirmation by email</li>
+          <li>To contact you if there is a problem with your booking</li>
+          <li>To keep records of payments for accounting and dispute resolution</li>
+        </ul>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">Who we share it with</h3>
+        <p>We share the minimum necessary information with:</p>
+        <ul style="margin-left:20px;color:var(--muted);line-height:1.9">
+          <li><strong>Brevo</strong> — our email delivery provider, which sends your booking confirmation and receipt. Brevo receives your name, email address, and receipt contents.</li>
+          <li><strong>Our hosting provider</strong> — which stores the booking database on servers we control.</li>
+        </ul>
+        <p class="mt-2">We do not sell your data. We do not share it with advertisers.</p>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">How long we keep it</h3>
+        <p class="muted">Booking and payment records are kept for <strong>7 years</strong> to satisfy Australian tax and accounting requirements. Reference images are deleted 12 months after your session unless you ask us to keep them. You can request deletion of your personal information at any time, subject to our legal record-keeping obligations.</p>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">How we protect it</h3>
+        <p class="muted">Your data is stored in a database accessible only to studio staff. The admin panel is protected by an access token stored in a server-side environment variable, not in the website code. Email delivery uses an encrypted API connection. We do not store payment credentials on our servers.</p>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">Your rights</h3>
+        <p class="muted">Under the Australian Privacy Act you have the right to:</p>
+        <ul style="margin-left:20px;color:var(--muted);line-height:1.9">
+          <li>Ask what personal information we hold about you</li>
+          <li>Request correction of inaccurate information</li>
+          <li>Request deletion of information we no longer need to keep</li>
+          <li>Complain to the Office of the Australian Information Commissioner (OAIC) if you believe we have mishandled your data</li>
+        </ul>
+      </div>
+
+      <div class="card mb-3">
+        <h3 class="mb-2">Cookies</h3>
+        <p class="muted">This site uses a single session cookie to keep you signed in to the admin panel if you are a staff member. It does not track you across other websites. There are no advertising or analytics cookies on this site.</p>
+      </div>
+
+      <div class="card">
+        <h3 class="mb-2">Contact</h3>
+        <p class="muted">For any privacy question or request, contact us at:</p>
+        <p class="mt-2"><strong>Ink Studio</strong><br>
+        Email: <a href="mailto:privacy@inkstudio.com">privacy@inkstudio.com</a></p>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="brand" style="font-size:1rem;margin-bottom:8px">Ink Studio</p>
+      <p>&copy; <span id="year"></span> Ink Studio. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    document.getElementById('updated').textContent = new Date().toLocaleDateString('en-AU', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+  </script>
+</body>
+</html>

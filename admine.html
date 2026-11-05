@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ink Studio — Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="admin-body">
+
+  <!-- ============ LOGIN SCREEN ============ -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <p class="eyebrow">Ink Studio</p>
+      <h2 class="mb-3">Admin Access</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="label" for="admin-token">Access token</label>
+          <input type="password" class="input" id="admin-token" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn--accent btn--full" id="login-btn">Sign In</button>
+      </form>
+      <p class="muted small mt-3 text-center">Session expires after 30 minutes of inactivity.</p>
+    </div>
+  </div>
+
+  <!-- ============ PANEL (hidden until logged in) ============ -->
+  <div id="panel-root" class="hidden">
+
+    <header class="admin-header">
+      <div class="container">
+        <div class="brand">Ink Studio <span style="font-size:0.7rem;color:var(--muted);margin-left:8px">Admin</span></div>
+        <div class="flex gap-2">
+          <span class="muted small" id="session-status">Session active</span>
+          <button class="btn btn--sm btn--ghost" id="logout-btn">Log Out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+
+      <!-- Tabs -->
+      <nav class="admin-nav">
+        <button class="admin-nav__item active" data-tab="payments">
+          Pending Payments <span class="admin-nav__badge hidden" id="pending-count">0</span>
+        </button>
+        <button class="admin-nav__item" data-tab="artists">Artists</button>
+        <button class="admin-nav__item" data-tab="methods">Payment Methods</button>
+      </nav>
+
+      <!-- ============ TAB: PENDING PAYMENTS ============ -->
+      <section class="tab-panel" id="tab-payments">
+        <div class="flex-between mb-2">
+          <h2>Pending Payments</h2>
+          <button class="btn btn--sm btn--ghost" id="refresh-payments">Refresh</button>
+        </div>
+        <p class="muted small mb-3">
+          Verify the payment landed in your account, then click <strong>Confirm</strong>.
+          This triggers the receipt email via Brevo to both the customer and you.
+        </p>
+        <div id="payments-table-wrap">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+
+      <!-- ============ TAB: ARTISTS ============ -->
+      <section class="tab-panel hidden" id="tab-artists">
+        <div class="flex-between mb-2">
+          <h2>Artists</h2>
+          <button class="btn btn--sm btn--accent" id="add-artist-btn">+ Add Artist</button>
+        </div>
+        <div id="artists-table-wrap">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+
+      <!-- ============ TAB: PAYMENT METHODS ============ -->
+      <section class="tab-panel hidden" id="tab-methods">
+        <div class="flex-between mb-2">
+          <h2>Payment Methods</h2>
+          <button class="btn btn--sm btn--accent" id="add-method-btn">+ Add Method</button>
+        </div>
+        <p class="muted small mb-3">
+          Toggle a method on/off with the switch. The customer booking page reflects changes on next load.
+        </p>
+        <div id="methods-table-wrap">
+          <p class="muted">Loading…</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ ARTIST MODAL ============ -->
+  <div class="modal-backdrop" id="artist-modal">
+    <div class="modal">
+      <h3 class="modal__title" id="artist-modal-title">Add Artist</h3>
+      <form id="artist-form">
+        <input type="hidden" id="artist-id">
+        <div class="form-group">
+          <label class="label" for="artist-name">Name</label>
+          <input type="text" class="input" id="artist-name" required>
+        </div>
+        <div class="form-group">
+          <label class="label" for="artist-slug">Slug (URL key, unique)</label>
+          <input type="text" class="input" id="artist-slug" pattern="[a-z0-9-]+" required>
+        </div>
+        <div class="form-group">
+          <label class="label" for="artist-bio">Bio</label>
+          <textarea class="textarea" id="artist-bio"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label" for="artist-rate">Hourly rate (AUD)</label>
+            <input type="number" class="input" id="artist-rate" step="0.01" min="0" required>
+          </div>
+          <div class="form-group">
+            <label class="label" for="artist-deposit">Deposit (AUD)</label>
+            <input type="number" class="input" id="artist-deposit" step="0.01" min="0" required>
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn--accent">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ PAYMENT METHOD MODAL ============ -->
+  <div class="modal-backdrop" id="method-modal">
+    <div class="modal">
+      <h3 class="modal__title" id="method-modal-title">Add Payment Method</h3>
+      <form id="method-form">
+        <input type="hidden" id="method-id">
+        <div class="form-group">
+          <label class="label" for="method-name">Display name</label>
+          <input type="text" class="input" id="method-name" placeholder="e.g. Bank Transfer (BSB)" required>
+        </div>
+        <div class="form-group">
+          <label class="label" for="method-slug">Slug (unique key)</label>
+          <input type="text" class="input" id="method-slug" pattern="[a-z0-9-]+" placeholder="e.g. bsb" required>
+        </div>
+        <div class="form-group">
+          <label class="label" for="method-instructions">Instructions shown to customer</label>
+          <textarea class="textarea" id="method-instructions" placeholder="Transfer the deposit to the account below…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="label">Detail fields (JSON)</label>
+          <textarea class="textarea" id="method-fields" style="font-family:monospace;font-size:0.8rem"
+            placeholder='{"bsb":"062-000","account_name":"Ink Studio Pty Ltd","account_number":"12345678"}'></textarea>
+          <p class="muted small mt-1">Key/value pairs. Shown to the customer under this method.</p>
+        </div>
+        <div class="form-group">
+          <label class="label" for="method-sort">Sort order</label>
+          <input type="number" class="input" id="method-sort" value="0" min="0">
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn--accent">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ CONFIRM PAYMENT MODAL ============ -->
+  <div class="modal-backdrop" id="confirm-modal">
+    <div class="modal">
+      <h3 class="modal__title">Confirm Payment</h3>
+      <p class="muted small mb-2" id="confirm-summary"></p>
+      <div class="form-group">
+        <label class="label" for="confirm-note">Verification note (optional)</label>
+        <textarea class="textarea" id="confirm-note" placeholder="e.g. matched BSB transfer on 12 Nov"></textarea>
+      </div>
+      <p class="small" style="color:var(--orange)">
+        This will send the receipt email to the customer and to you. It cannot be undone.
+      </p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close-modal>Cancel</button>
+        <button type="button" class="btn btn--accent" id="confirm-payment-btn">Confirm &amp; Send Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TOASTS ============ -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

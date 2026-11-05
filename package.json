@@ -1,0 +1,13 @@
+{
+  "name": "ink-studio",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "start": "node server.js", "dev": "node --watch server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^16.4.5",
+    "pdfkit": "^0.15.0",
+    "express-rate-limit": "^7.4.0"
+  }
+}
