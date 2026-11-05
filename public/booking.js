@@ -24,7 +24,6 @@ function toast(message, type = 'success') {
   }, 4000);
 }
 
-// Uses the dynamic symbol from the database
 const money = (n) => `${state.settings.currency_symbol}${Number(n).toFixed(2)}`;
 
 function formatSlot(iso) {
@@ -49,14 +48,15 @@ async function loadSetup() {
 
     if (state.artists.length === 0) {
       document.getElementById('artist-grid').innerHTML = '<p class="muted">No artists available. Add one in the admin panel.</p>';
+      document.getElementById('artist-select-grid').innerHTML = '<p class="muted">No artists available.</p>';
     } else {
       renderArtistGallery();
       renderArtistChooser();
     }
     renderPaymentMethods();
   } catch (err) {
+    console.error("Setup Error:", err);
     toast('Could not load studio data. Please refresh.', 'error');
-    console.error(err);
   }
 }
 
@@ -346,5 +346,10 @@ function wire() {
   initDatePicker();
 }
 
-wire();
-loadSetup();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wire);
+  document.addEventListener('DOMContentLoaded', loadSetup);
+} else {
+  wire();
+  loadSetup();
+}
