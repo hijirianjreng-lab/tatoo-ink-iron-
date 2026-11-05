@@ -7,7 +7,6 @@ const router = express.Router();
 
 router.get('/setup', async (req, res, next) => {
   try {
-    // Cast NUMERIC to FLOAT so they arrive as JS numbers, not strings
     const artistsQ = await pool.query(`
       SELECT id, name, slug, COALESCE(bio, '') as bio, 
              CAST(hourly_rate AS FLOAT) as hourly_rate, 
