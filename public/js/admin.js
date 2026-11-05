@@ -73,6 +73,30 @@ function showPanel() {
   loadArtists();
   loadMethods();
 }
+$('upload-portfolio-btn').addEventListener('click', async () => {
+  const artistId = $('artist-id').value;
+  const fileInput = $('portfolio-file');
+  if (!artistId) return toast('Save the artist first.', 'error');
+  if (!fileInput.files.length) return toast('Choose an image.', 'error');
+
+  const fd = new FormData();
+  fd.append('image', fileInput.files[0]);
+  fd.append('caption', '');
+
+  try {
+    const sid = getSession();
+    const res = await fetch(`/api/artists/${artistId}/portfolio/upload`, {
+      method: 'POST',
+      headers: { 'x-admin-session': sid },  // do NOT set content-type; browser sets multipart boundary
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) return toast(data.error || 'Upload failed.', 'error');
+    toast('Image uploaded.');
+    fileInput.value = '';
+    loadPortfolio(artistId);
+  } catch (e) { toast(e.message, 'error'); }
+});
 
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
