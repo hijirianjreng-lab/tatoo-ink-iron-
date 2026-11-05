@@ -1,4 +1,5 @@
 // ink-studio/server.js
+import adminSettings from './routes/adminSettings.js';
 import 'dotenv/config';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -92,6 +93,7 @@ app.use('/api/payments', payments);
 app.use('/api/artists', artists);
 app.use('/api/payment-methods', paymentMethods);
 app.use('/api/portfolio', portfolio);
+app.use('/api/settings', adminSettings);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
