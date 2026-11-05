@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pool, { init, close as closeDb } from './db.js';
 import { adminLogin, requireAdmin } from './middleware/adminAuth.js';
@@ -20,19 +21,40 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// Block direct access to private folder
+/* ---------- Admin panel: private HTML served from a secret route ---------- */
+
+// Resolve the admin path once, at startup, and log it for diagnostics.
+const ADMIN_PATH = (process.env.ADMIN_PATH || 'admin-secret').trim();
+const ADMIN_FILE = path.join(__dirname, 'private', 'admin.html');
+
+console.log('[admin] ADMIN_PATH =', JSON.stringify(ADMIN_PATH));
+console.log('[admin] ADMIN_FILE =', ADMIN_FILE);
+console.log('[admin] file exists =', fs.existsSync(ADMIN_FILE));
+
+// Block direct access to the private folder, regardless of what's inside.
 app.use('/private', (req, res) => res.status(404).end());
+
+// Serve the admin HTML only through the secret path.
+app.get(`/${ADMIN_PATH}`, (req, res) => {
+  res.sendFile(ADMIN_FILE, (err) => {
+    if (err) {
+      console.error('[admin] sendFile failed:', err.message);
+      if (!res.headersSent) res.status(500).send('Admin file not found on server');
+    }
+  });
+});
+
+/* ---------- Static public assets ---------- */
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Secret admin panel route — path from env
-app.get(`/${process.env.ADMIN_PATH || 'admin-secret'}`, (req, res) => {
-  res.sendFile(path.join(__dirname, 'private', 'admin.html'));
-});
+/* ---------- Health ---------- */
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
+
+/* ---------- Admin login ---------- */
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -42,6 +64,8 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts, try again later' }
 });
 app.post('/admin/login', loginLimiter, adminLogin);
+
+/* ---------- Admin-only: pending payments ---------- */
 
 app.get('/api/payments/pending', requireAdmin, async (req, res, next) => {
   try {
@@ -61,6 +85,8 @@ app.get('/api/payments/pending', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* ---------- API routers ---------- */
+
 app.use('/api/bookings', bookings);
 app.use('/api/payments', payments);
 app.use('/api/artists', artists);
@@ -69,11 +95,15 @@ app.use('/api/portfolio', portfolio);
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
+/* ---------- Central error handler ---------- */
+
 app.use((err, req, res, next) => {
   console.error('[server error]', err);
   if (res.headersSent) return next(err);
   res.status(500).json({ error: 'Internal server error' });
 });
+
+/* ---------- Pending-payment expiry job ---------- */
 
 async function expireStalePayments() {
   const hours = parseInt(process.env.PENDING_EXPIRY_HOURS || '24', 10);
@@ -105,6 +135,8 @@ async function expireStalePayments() {
 }
 
 setInterval(() => expireStalePayments().catch(console.error), 15 * 60 * 1000);
+
+/* ---------- Startup ---------- */
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
