@@ -73,30 +73,6 @@ function showPanel() {
   loadArtists();
   loadMethods();
 }
-$('upload-portfolio-btn').addEventListener('click', async () => {
-  const artistId = $('artist-id').value;
-  const fileInput = $('portfolio-file');
-  if (!artistId) return toast('Save the artist first.', 'error');
-  if (!fileInput.files.length) return toast('Choose an image.', 'error');
-
-  const fd = new FormData();
-  fd.append('image', fileInput.files[0]);
-  fd.append('caption', '');
-
-  try {
-    const sid = getSession();
-    const res = await fetch(`/api/artists/${artistId}/portfolio/upload`, {
-      method: 'POST',
-      headers: { 'x-admin-session': sid },  // do NOT set content-type; browser sets multipart boundary
-      body: fd
-    });
-    const data = await res.json();
-    if (!res.ok) return toast(data.error || 'Upload failed.', 'error');
-    toast('Image uploaded.');
-    fileInput.value = '';
-    loadPortfolio(artistId);
-  } catch (e) { toast(e.message, 'error'); }
-});
 
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -375,6 +351,13 @@ function openArtistModal(artistId) {
   $('artist-bio').value = artist?.bio || '';
   $('artist-rate').value = artist?.hourly_rate ?? '';
   $('artist-deposit').value = artist?.deposit_amount ?? '';
+  $('portfolio-file').value = '';
+
+  if (artist) {
+    loadPortfolio(artist.id);
+  } else {
+    $('portfolio-grid').innerHTML = '<p class="muted small">Save the artist first to add images.</p>';
+  }
 
   modal.classList.add('open');
 }
@@ -400,8 +383,16 @@ $('artist-form').addEventListener('submit', async (e) => {
       return;
     }
     toast(id ? 'Artist updated.' : 'Artist added.');
-    closeModal($('artist-modal'));
-    loadArtists();
+    if (!id && data.id) {
+      // newly created — switch modal into edit mode so portfolio can be uploaded
+      $('artist-id').value = data.id;
+      $('artist-modal-title').textContent = 'Edit Artist';
+      loadPortfolio(data.id);
+      loadArtists();
+    } else {
+      closeModal($('artist-modal'));
+      loadArtists();
+    }
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -425,6 +416,76 @@ async function toggleArtist(id) {
     toast(err.message, 'error');
   }
 }
+
+/* ---- Portfolio ---- */
+async function loadPortfolio(artistId) {
+  const grid = $('portfolio-grid');
+  grid.innerHTML = '<p class="muted small">Loading…</p>';
+  try {
+    const res = await api(`/api/artists/${artistId}/portfolio`);
+    const data = await res.json();
+    renderPortfolio(data.portfolio, artistId);
+  } catch {
+    grid.innerHTML = '<p class="muted small">Failed to load.</p>';
+  }
+}
+
+function renderPortfolio(items, artistId) {
+  const grid = $('portfolio-grid');
+  if (!items.length) {
+    grid.innerHTML = '<p class="muted small">No images yet.</p>';
+    return;
+  }
+  grid.innerHTML = items.map(p => `
+    <div style="position:relative">
+      <img src="${escapeHtml(p.image_path)}" alt=""
+           style="width:100%;height:120px;object-fit:cover;border:1px solid var(--border)">
+      <button class="btn btn--sm btn--danger" data-del-portfolio="${p.id}"
+              style="position:absolute;top:4px;right:4px;padding:4px 8px">×</button>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('[data-del-portfolio]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Delete this image?')) return;
+      const res = await api(`/api/artists/${artistId}/portfolio/${b.dataset.delPortfolio}`, { method: 'DELETE' });
+      if (res.ok) { toast('Deleted.'); loadPortfolio(artistId); }
+      else toast('Delete failed.', 'error');
+    });
+  });
+}
+
+$('upload-portfolio-btn').addEventListener('click', async () => {
+  const artistId = $('artist-id').value;
+  const fileInput = $('portfolio-file');
+  if (!artistId) return toast('Save the artist first.', 'error');
+  if (!fileInput.files.length) return toast('Choose an image.', 'error');
+
+  const fd = new FormData();
+  fd.append('image', fileInput.files[0]);
+
+  const btn = $('upload-portfolio-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+
+  try {
+    const res = await fetch(`/api/artists/${artistId}/portfolio/upload`, {
+      method: 'POST',
+      headers: { 'x-admin-session': getSession() },
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) return toast(data.error || 'Upload failed.', 'error');
+    toast('Image uploaded.');
+    fileInput.value = '';
+    loadPortfolio(artistId);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Upload';
+  }
+});
 
 /* ============ TAB 3: PAYMENT METHODS ============ */
 let methodsCache = [];
