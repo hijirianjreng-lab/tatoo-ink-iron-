@@ -44,7 +44,7 @@
         <h2>Meet the Team</h2>
       </div>
       <div class="grid grid--auto" id="artist-grid">
-        <!-- Populated by booking.js from GET /api/bookings/setup -->
+        <!-- Populated by /js/booking.js -->
         <p class="muted">Loading artists…</p>
       </div>
     </div>
@@ -70,7 +70,7 @@
       <div class="wizard-panel" id="panel-1">
         <h3 class="mb-2">Choose an artist</h3>
         <div class="grid grid--2" id="artist-select-grid">
-          <!-- Populated by booking.js -->
+          <!-- Populated by /js/booking.js -->
         </div>
         <div class="text-right mt-3">
           <button class="btn btn--accent" id="btn-step-1-next" disabled>Continue</button>
@@ -114,7 +114,7 @@
           </div>
         </div>
         <div class="card card--elevated mt-2" id="summary-box">
-          <!-- Populated by booking.js -->
+          <!-- Populated by /js/booking.js -->
         </div>
         <div class="flex-between mt-3">
           <button class="btn btn--ghost" id="btn-step-3-back">Back</button>
@@ -126,7 +126,7 @@
       <div class="wizard-panel hidden" id="panel-4">
         <h3 class="mb-2">How would you like to pay the deposit?</h3>
         <div id="payment-methods">
-          <!-- Populated by booking.js -->
+          <!-- Populated by /js/booking.js -->
         </div>
         <div class="flex-between mt-3">
           <button class="btn btn--ghost" id="btn-step-4-back">Back</button>
@@ -148,7 +148,7 @@
           <div class="reference-box__value" id="done-reference">—</div>
         </div>
         <div class="card mt-2" id="done-payment-details">
-          <!-- Populated by booking.js with the chosen method's fields -->
+          <!-- Populated by /js/booking.js with the chosen method's fields -->
         </div>
         <p class="muted small mt-3 text-center">
           Keep this reference number. Include it in your payment description so we can match it.
@@ -176,6 +176,8 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
+  
+  <!-- THIS IS THE FIXED SCRIPT TAG: It must point to the /js/ folder, singular 'booking.js' -->
   <script type="module" src="/js/booking.js"></script>
 </body>
 </html>
