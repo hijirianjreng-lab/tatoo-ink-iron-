@@ -7,17 +7,27 @@ const router = express.Router();
 
 router.get('/setup', async (req, res, next) => {
   try {
+    // Cast NUMERIC to FLOAT so they arrive as JS numbers, not strings
     const artistsQ = await pool.query(`
-      SELECT id, name, slug, bio, hourly_rate, deposit_amount
+      SELECT id, name, slug, COALESCE(bio, '') as bio, 
+             CAST(hourly_rate AS FLOAT) as hourly_rate, 
+             CAST(deposit_amount AS FLOAT) as deposit_amount
       FROM artists WHERE is_active = 1 ORDER BY name ASC
     `);
+    
     const methodsQ = await pool.query(`
       SELECT id, name, slug, instructions, fields
       FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC
     `);
+
+    const settingsQ = await pool.query(`
+      SELECT currency_symbol, currency_code FROM studio_settings LIMIT 1
+    `);
+
     res.json({
       artists: artistsQ.rows,
-      paymentMethods: methodsQ.rows // fields is already JSONB-parsed
+      paymentMethods: methodsQ.rows,
+      settings: settingsQ.rows[0] || { currency_symbol: '$', currency_code: 'AUD' }
     });
   } catch (e) { next(e); }
 });
@@ -38,11 +48,9 @@ router.get('/availability', async (req, res, next) => {
       [artist_id, date]
     );
 
-    const takenHours = new Set(
-      taken.map(t => new Date(t.slot_start).getHours())
-    );
-
+    const takenHours = new Set(taken.map(t => new Date(t.slot_start).getHours()));
     const free = [];
+
     for (let h = WORK_START; h + SLOT_MINUTES / 60 <= WORK_END; h++) {
       if (!takenHours.has(h)) {
         const start = new Date(`${date}T${String(h).padStart(2, '0')}:00:00`);
