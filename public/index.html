@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ink Studio — Book Your Session</title>
+  <title>Ink & Iron — Book Your Session</title>
   <meta name="description" content="Book your tattoo session with our artists. Fine line, traditional, and custom work.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,9 +15,10 @@
   <!-- ============ HEADER ============ -->
   <header class="site-header">
     <div class="container">
-      <a href="/" class="brand">Ink Studio</a>
+      <a href="/" class="brand">Ink &amp; Iron</a>
       <nav class="nav">
         <a href="#artists">Artists</a>
+        <a href="#about">About</a>
         <a href="#book" class="btn btn--sm btn--accent">Book Now</a>
       </nav>
     </div>
@@ -113,6 +114,14 @@
             <input type="tel" class="input" id="customer-phone" autocomplete="tel">
           </div>
         </div>
+        
+        <!-- Reference Upload -->
+        <div class="form-group mt-2">
+          <label class="label" for="booking-reference">Reference Tattoo (Optional)</label>
+          <p class="muted small mb-1">Upload an image of the tattoo style, size, or exact design you want.</p>
+          <input type="file" class="input" id="booking-reference" accept="image/*">
+        </div>
+
         <div class="card card--elevated mt-2" id="summary-box">
           <!-- Populated by /js/booking.js -->
         </div>
@@ -161,14 +170,60 @@
     </div>
   </section>
 
+  <!-- ============ ABOUT US ============ -->
+  <section class="section" id="about" style="background: var(--surface-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container container--narrow text-center">
+      <p class="eyebrow">About Us</p>
+      <h2>Ink &amp; Iron</h2>
+      <p class="muted mt-2" style="max-width: 600px; margin: 0 auto;">
+        We are a bespoke tattoo studio dedicated to turning your ideas into lifelong art. 
+        Our artists specialize in a range of styles, from fine line to traditional. 
+        Every session is a collaboration, ensuring your piece is unique, meaningful, and executed to perfection.
+      </p>
+    </div>
+  </section>
+
   <!-- ============ FOOTER ============ -->
-  <footer class="site-footer">
-    <div class="container">
-      <p class="brand" style="font-size:1rem;margin-bottom:8px">Ink Studio</p>
-      <p>&copy; <span id="year"></span> Ink Studio. All rights reserved.</p>
+  <footer class="site-footer" style="margin-top: 0;">
+    <div class="container text-center">
+      <p class="brand" style="font-size:1.5rem; margin-bottom:16px;">Ink &amp; Iron</p>
+      
+      <div class="flex-between" style="max-width: 600px; margin: 0 auto; flex-wrap: wrap; gap: 24px;">
+        <div style="text-align: left;">
+          <h4 style="color: var(--gold); margin-bottom: 8px;">Location</h4>
+          <p class="muted small">123 Ink Street<br>Sydney, NSW 2000</p>
+        </div>
+        <div style="text-align: left;">
+          <h4 style="color: var(--gold); margin-bottom: 8px;">Contact</h4>
+          <p class="muted small">
+            <!-- Replace the email and phone below with your actual details -->
+            <a href="mailto:hello@inkandiron.com" class="muted">hello@inkandiron.com</a><br>
+            <a href="tel:+61212345678" class="muted">(02) 1234 5678</a>
+          </p>
+        </div>
+      </div>
+
+      <p class="muted small mt-3">&copy; <span id="year"></span> Ink &amp; Iron. All rights reserved.</p>
       <p class="small mt-1"><a href="/privacy.html">Privacy Policy</a></p>
     </div>
   </footer>
+
+  <!-- ============ PORTFOLIO MODAL ============ -->
+  <div class="modal-backdrop" id="portfolio-modal">
+    <div class="modal" style="max-width: 800px;">
+      <h3 class="modal__title" id="portfolio-artist-name">Artist Name</h3>
+      <p class="muted small mb-2" id="portfolio-artist-bio"></p>
+      
+      <div class="grid grid--auto" id="portfolio-grid" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+        <!-- Images loaded here -->
+      </div>
+
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="close-portfolio-btn">Close</button>
+        <button class="btn btn--accent" id="book-from-portfolio-btn">Book This Artist</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ TOASTS ============ -->
   <div class="toast-container" id="toast-container"></div>
@@ -177,7 +232,6 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
   
-  <!-- THIS IS THE FIXED SCRIPT TAG: It must point to the /js/ folder, singular 'booking.js' -->
-  <script type="module" src="/js/booking.js?v=3"></script>
+  <script type="module" src="/js/booking.js?v=4"></script>
 </body>
 </html>
