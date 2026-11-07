@@ -38,24 +38,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadSetup() {
-    console.log("Starting to load setup...");
     try {
       const res = await fetch('/api/bookings/setup');
       if (!res.ok) throw new Error('Failed to load setup');
       const data = await res.json();
       
-      console.log("Data received from server:", data);
-
       state.artists = data.artists || [];
       state.paymentMethods = data.paymentMethods || [];
       if (data.settings) state.settings = data.settings;
 
       if (state.artists.length === 0) {
-        const grid = document.getElementById('artist-grid');
-        if (grid) grid.innerHTML = '<p class="muted">No artists available. Add one in the admin panel.</p>';
-        
-        const selectGrid = document.getElementById('artist-select-grid');
-        if (selectGrid) selectGrid.innerHTML = '<p class="muted">No artists available.</p>';
+        $('artist-grid').innerHTML = '<p class="muted">No artists available.</p>';
       } else {
         renderArtistGallery();
         renderArtistChooser();
@@ -63,38 +56,81 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPaymentMethods();
     } catch (err) {
       console.error("Setup Error:", err);
-      toast('Could not load studio data. Please refresh.', 'error');
-      
-      const grid = document.getElementById('artist-grid');
-      if (grid) grid.innerHTML = '<p class="muted" style="color:red">Error loading artists. Check console.</p>';
+      toast('Could not load studio data.', 'error');
     }
   }
 
+  // --- ARTIST GALLERY (Marketing Section) ---
   function renderArtistGallery() {
     const grid = $('artist-grid');
     if (!grid) return;
     
-    grid.innerHTML = state.artists.map(a => `
-      <div class="artist-card" data-artist-id="${a.id}">
-        <div class="artist-card__img" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--font-display);font-size:1.1rem">
-          ${escapeHtml(a.name)}
-        </div>
+    grid.innerHTML = state.artists.map(a => {
+      // Use the first portfolio image as the cover, if it exists
+      const cover = a.portfolio && a.portfolio.length > 0 ? a.portfolio[0].path : '';
+      
+      return `
+      <div class="artist-card" data-artist-id="${a.id}" style="cursor: pointer;">
+        ${cover 
+          ? `<img src="${cover}" class="artist-card__img" alt="${escapeHtml(a.name)}" loading="lazy">`
+          : `<div class="artist-card__img" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--font-display);font-size:1.1rem">${escapeHtml(a.name)}</div>`
+        }
         <div class="artist-card__body">
           <div class="artist-card__name">${escapeHtml(a.name)}</div>
-          <div class="artist-card__rate">${money(a.hourly_rate)} / hour · Deposit ${money(a.deposit_amount)}</div>
-          ${a.bio ? `<p class="card__body mt-1">${escapeHtml(a.bio)}</p>` : ''}
+          <div class="artist-card__rate">${money(a.hourly_rate)} / hour</div>
+          <div class="small muted mt-1">Click to view portfolio</div>
         </div>
       </div>
-    `).join('');
+    `}).join('');
 
     grid.querySelectorAll('[data-artist-id]').forEach(card => {
       card.addEventListener('click', () => {
-        selectArtist(Number(card.dataset.artistId));
-        document.getElementById('book').scrollIntoView({ behavior: 'smooth' });
+        const artist = state.artists.find(a => a.id === Number(card.dataset.artistId));
+        openPortfolioModal(artist);
       });
     });
   }
 
+  // --- PORTFOLIO MODAL ---
+  function openPortfolioModal(artist) {
+    if (!artist) return;
+    $('portfolio-artist-name').textContent = artist.name;
+    $('portfolio-artist-bio').textContent = artist.bio || '';
+    
+    const grid = $('portfolio-grid');
+    if (!artist.portfolio || artist.portfolio.length === 0) {
+      grid.innerHTML = '<p class="muted">No portfolio images uploaded yet.</p>';
+    } else {
+      grid.innerHTML = artist.portfolio.map(img => `
+        <div style="position:relative; padding-top: 100%;">
+          <img src="${img.path}" alt="${escapeHtml(img.caption || '')}" 
+               style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border:1px solid var(--border);">
+        </div>
+      `).join('');
+    }
+
+    // Handle "Book This Artist" button
+    const bookBtn = $('book-from-portfolio-btn');
+    // Clone the button to remove old event listeners
+    const newBookBtn = bookBtn.cloneNode(true);
+    bookBtn.parentNode.replaceChild(newBookBtn, bookBtn);
+    
+    newBookBtn.addEventListener('click', () => {
+      closeModal('portfolio-modal');
+      selectArtist(artist.id);
+      $('book').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    $('portfolio-modal').classList.add('open');
+  }
+
+  function closeModal(id) {
+    $(id).classList.remove('open');
+  }
+
+  $('close-portfolio-btn').addEventListener('click', () => closeModal('portfolio-modal'));
+
+  // --- STEP 1 CHOOSER ---
   function renderArtistChooser() {
     const grid = $('artist-select-grid');
     if (!grid) return;
@@ -123,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) btn.disabled = !state.selectedArtist;
   }
 
+  // --- WIZARD FLOW ---
   function goToStep(n) {
     state.step = n;
     for (let i = 1; i <= 4; i++) {
@@ -232,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!box) return;
     
     if (!state.paymentMethods.length) {
-      box.innerHTML = '<p class="muted">No payment methods configured. Contact the studio.</p>';
+      box.innerHTML = '<p class="muted">No payment methods configured.</p>';
       return;
     }
     box.innerHTML = state.paymentMethods.map(m => `
@@ -275,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = $('customer-name')?.value.trim();
     const email = $('customer-email')?.value.trim();
     const phone = $('customer-phone')?.value.trim();
+    const refFile = $('booking-reference')?.files[0];
 
     if (!name) return toast('Please enter your name.', 'error');
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast('Please enter a valid email.', 'error');
@@ -287,19 +325,21 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
     btn.textContent = 'Booking…';
 
+    // Create FormData to send text fields AND the file
+    const formData = new FormData();
+    formData.append('artist_id', state.selectedArtist.id);
+    formData.append('customer_name', name);
+    formData.append('customer_email', email);
+    if (phone) formData.append('customer_phone', phone);
+    formData.append('slot_start', state.selectedSlot.slot_start);
+    formData.append('slot_end', state.selectedSlot.slot_end);
+    formData.append('payment_method_id', state.selectedMethod.id);
+    if (refFile) formData.append('reference', refFile);
+
     try {
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          artist_id: state.selectedArtist.id,
-          customer_name: name,
-          customer_email: email,
-          customer_phone: phone || null,
-          slot_start: state.selectedSlot.slot_start,
-          slot_end: state.selectedSlot.slot_end,
-          payment_method_id: state.selectedMethod.id
-        })
+        body: formData // Notice: NO Content-Type header. FormData sets it automatically.
       });
 
       const data = await res.json();
@@ -365,21 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }[c]));
   }
 
-  // Wire up the buttons
-  const btnStep1Next = $('btn-step-1-next');
-  if (btnStep1Next) btnStep1Next.addEventListener('click', () => goToStep(2));
-  
-  const btnStep2Back = $('btn-step-2-back');
-  if (btnStep2Back) btnStep2Back.addEventListener('click', () => goToStep(1));
-  
-  const btnStep2Next = $('btn-step-2-next');
-  if (btnStep2Next) btnStep2Next.addEventListener('click', () => { renderSummary(); goToStep(3); });
-  
-  const btnStep3Back = $('btn-step-3-back');
-  if (btnStep3Back) btnStep3Back.addEventListener('click', () => goToStep(2));
-  
-  const btnStep3Next = $('btn-step-3-next');
-  if (btnStep3Next) btnStep3Next.addEventListener('click', () => {
+  // --- WIRE UP BUTTONS ---
+  $('btn-step-1-next')?.addEventListener('click', () => goToStep(2));
+  $('btn-step-2-back')?.addEventListener('click', () => goToStep(1));
+  $('btn-step-2-next')?.addEventListener('click', () => { renderSummary(); goToStep(3); });
+  $('btn-step-3-back')?.addEventListener('click', () => goToStep(2));
+  $('btn-step-3-next')?.addEventListener('click', () => {
     if (!state.selectedMethod && state.paymentMethods.length === 1) {
       state.selectedMethod = state.paymentMethods[0];
       const el = document.querySelector(`[data-method-id="${state.paymentMethods[0].id}"]`);
@@ -387,12 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     goToStep(4);
   });
-  
-  const btnStep4Back = $('btn-step-4-back');
-  if (btnStep4Back) btnStep4Back.addEventListener('click', () => goToStep(3));
-  
-  const btnConfirm = $('btn-confirm-booking');
-  if (btnConfirm) btnConfirm.addEventListener('click', submitBooking);
+  $('btn-step-4-back')?.addEventListener('click', () => goToStep(3));
+  $('btn-confirm-booking')?.addEventListener('click', submitBooking);
   
   initDatePicker();
   loadSetup();
