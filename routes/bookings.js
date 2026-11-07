@@ -8,7 +8,6 @@ import { sendAdminNotification } from '../services/brevo.js';
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ---------- Public: Setup (Artists & Payment Methods) ----------
 router.get('/setup', async (req, res, next) => {
   try {
     const artistsQ = await pool.query(`
@@ -40,13 +39,9 @@ router.get('/setup', async (req, res, next) => {
       paymentMethods: methodsQ.rows,
       settings: settingsQ.rows[0] || { currency_symbol: '$', currency_code: 'AUD' }
     });
-  } catch (e) { 
-    console.error('Setup endpoint error:', e); 
-    next(e); 
-  }
+  } catch (e) { next(e); }
 });
 
-// ---------- Public: Availability ----------
 router.get('/availability', async (req, res, next) => {
   const { artist_id, date } = req.query;
   if (!artist_id || !date) return res.status(400).json({ error: 'artist_id and date required' });
@@ -77,7 +72,6 @@ router.get('/availability', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ---------- Public: Create Booking ----------
 router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'screenshot', maxCount: 1 }]), async (req, res, next) => {
   const {
     artist_id, customer_name, customer_email, customer_phone,
@@ -97,7 +91,6 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
 
     const ref = `INK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
-    // Get file buffers
     const refImg = req.files?.['reference'] ? req.files['reference'][0].buffer : null;
     const refMime = req.files?.['reference'] ? req.files['reference'][0].mimetype : null;
     
@@ -127,6 +120,7 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
 
     await client.query('COMMIT');
 
+    // Send notification to Admin (fire and forget)
     if (proofImg) {
       sendAdminNotification({
         adminEmail: process.env.ADMIN_EMAIL,
@@ -144,6 +138,7 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
     try { await client.query('ROLLBACK'); } catch { /* ignore */ }
     if (e.message === 'SLOT_TAKEN') return res.status(409).json({ error: 'Slot already reserved' });
     if (e.code === '23505') return res.status(409).json({ error: 'Slot already reserved' });
+    console.error("BOOKING ERROR:", e); // <--- This will show the exact DB error in Render logs if it fails
     next(e);
   } finally {
     client.release();
