@@ -67,7 +67,6 @@ router.delete('/:id', async (req, res, next) => {
 
 /* ---------- Portfolio ---------- */
 
-// Fixed: Used `rows` instead of `row`, fixed the `$1` placeholder.
 router.get('/:id/portfolio', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -81,7 +80,7 @@ router.get('/:id/portfolio', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Restored: The missing file upload route!
+// Upload image route
 router.post('/:id/portfolio/upload', portfolioUpload.single('image'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -108,10 +107,13 @@ router.post('/:id/portfolio/upload', portfolioUpload.single('image'), async (req
       sort_order: row.sort_order,
       image_path: `/api/portfolio/${row.id}/image`
     });
-  } catch (e) { next(e); }
+  } catch (e) { 
+    console.error('Upload error:', e);
+    next(e); 
+  }
 });
 
-// Add an image via URL (fallback)
+// Add image via URL (fallback)
 router.post('/:id/portfolio', async (req, res, next) => {
   const { image_url, caption, sort_order } = req.body;
   if (!image_url) return res.status(400).json({ error: 'image_url required' });
