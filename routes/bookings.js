@@ -3,15 +3,81 @@ import express from 'express';
 import crypto from 'node:crypto';
 import multer from 'multer';
 import pool from '../db.js';
-import { sendAdminNotification } from '../services/brevo.js'; // We will create this function
+import { sendAdminNotification } from '../services/brevo.js';
 
 const router = express.Router();
-
-// Accept BOTH the reference tattoo AND the payment screenshot
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ... (setup & availability routes stay the same) ...
+// ---------- Public: Setup (Artists & Payment Methods) ----------
+router.get('/setup', async (req, res, next) => {
+  try {
+    const artistsQ = await pool.query(`
+      SELECT a.id, a.name, a.slug, COALESCE(a.bio, '') as bio, 
+             CAST(a.hourly_rate AS FLOAT) as hourly_rate, 
+             CAST(a.deposit_amount AS FLOAT) as deposit_amount,
+             COALESCE(
+               (SELECT json_agg(
+                 json_build_object('id', p.id, 'path', '/api/portfolio/' || p.id || '/image', 'caption', p.caption)
+               ) FROM artist_portfolio p WHERE p.artist_id = a.id), 
+               '[]'::json
+             ) as portfolio
+      FROM artists a
+      WHERE a.is_active = 1 
+      ORDER BY a.name ASC
+    `);
+    
+    const methodsQ = await pool.query(`
+      SELECT id, name, slug, instructions, fields
+      FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC
+    `);
 
+    const settingsQ = await pool.query(`
+      SELECT currency_symbol, currency_code FROM studio_settings LIMIT 1
+    `);
+
+    res.json({
+      artists: artistsQ.rows,
+      paymentMethods: methodsQ.rows,
+      settings: settingsQ.rows[0] || { currency_symbol: '$', currency_code: 'AUD' }
+    });
+  } catch (e) { 
+    console.error('Setup endpoint error:', e); 
+    next(e); 
+  }
+});
+
+// ---------- Public: Availability ----------
+router.get('/availability', async (req, res, next) => {
+  const { artist_id, date } = req.query;
+  if (!artist_id || !date) return res.status(400).json({ error: 'artist_id and date required' });
+
+  const WORK_START = 9;
+  const WORK_END = 18;
+  const SLOT_MINUTES = 60;
+
+  try {
+    const { rows: taken } = await pool.query(
+      `SELECT slot_start, slot_end FROM bookings
+       WHERE artist_id = $1 AND status != 'cancelled'
+         AND DATE(slot_start AT TIME ZONE 'Australia/Sydney') = $2`,
+      [artist_id, date]
+    );
+
+    const takenHours = new Set(taken.map(t => new Date(t.slot_start).getHours()));
+    const free = [];
+
+    for (let h = WORK_START; h + SLOT_MINUTES / 60 <= WORK_END; h++) {
+      if (!takenHours.has(h)) {
+        const start = new Date(`${date}T${String(h).padStart(2, '0')}:00:00`);
+        const end = new Date(start.getTime() + SLOT_MINUTES * 60 * 1000);
+        free.push({ slot_start: start.toISOString(), slot_end: end.toISOString() });
+      }
+    }
+    res.json({ date, artist_id: Number(artist_id), free, taken });
+  } catch (e) { next(e); }
+});
+
+// ---------- Public: Create Booking ----------
 router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'screenshot', maxCount: 1 }]), async (req, res, next) => {
   const {
     artist_id, customer_name, customer_email, customer_phone,
@@ -32,11 +98,11 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
     const ref = `INK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     // Get file buffers
-    const refImg = req.files['reference'] ? req.files['reference'][0].buffer : null;
-    const refMime = req.files['reference'] ? req.files['reference'][0].mimetype : null;
+    const refImg = req.files?.['reference'] ? req.files['reference'][0].buffer : null;
+    const refMime = req.files?.['reference'] ? req.files['reference'][0].mimetype : null;
     
-    const proofImg = req.files['screenshot'] ? req.files['screenshot'][0].buffer : null;
-    const proofMime = req.files['screenshot'] ? req.files['screenshot'][0].mimetype : null;
+    const proofImg = req.files?.['screenshot'] ? req.files['screenshot'][0].buffer : null;
+    const proofMime = req.files?.['screenshot'] ? req.files['screenshot'][0].mimetype : null;
 
     await client.query('BEGIN');
 
@@ -53,7 +119,6 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
     );
     const bookingId = inserted.rows[0].id;
 
-    // Save the payment WITH the screenshot proof
     await client.query(
       `INSERT INTO payments (booking_id, payment_method_id, reference_number, amount, status, proof_data, proof_mime_type)
        VALUES ($1,$2,$3,$4,'pending', $5, $6)`,
@@ -62,7 +127,6 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
 
     await client.query('COMMIT');
 
-    // Send notification to Admin (fire and forget)
     if (proofImg) {
       sendAdminNotification({
         adminEmail: process.env.ADMIN_EMAIL,
