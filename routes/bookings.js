@@ -120,25 +120,37 @@ router.post('/', upload.fields([{ name: 'reference', maxCount: 1 }, { name: 'scr
 
     await client.query('COMMIT');
 
-    // Send notification to Admin (fire and forget)
-    if (proofImg) {
-      sendAdminNotification({
-        adminEmail: process.env.ADMIN_EMAIL,
-        reference: ref,
-        customerName: customer_name,
-        artistName: artistName,
-        amount: deposit,
-        screenshotBuffer: proofImg,
-        screenshotMime: proofMime
-      }).catch(err => console.error('Admin email failed:', err));
-    }
+    // 🔥 TRIGGER EMAILS HERE
+    const slotStartFormatted = new Date(slot_start).toLocaleString('en-AU', { dateStyle: 'full', timeStyle: 'short' });
+
+    // 1. Send "Pending" email to Customer
+    sendCustomerPendingEmail({
+      to: customer_email,
+      customerName: customer_name,
+      artistName: artistName,
+      slotStart: slotStartFormatted,
+      reference: ref
+    }).catch(err => console.error('Customer email failed:', err));
+
+    // 2. Send Notification to Admin (with images attached)
+    sendAdminNotification({
+      adminEmail: process.env.ADMIN_EMAIL,
+      reference: ref,
+      customerName: customer_name,
+      artistName: artistName,
+      amount: deposit,
+      screenshotBuffer: proofImg,
+      screenshotMime: proofMime,
+      referenceBuffer: refImg,
+      referenceMime: refMime
+    }).catch(err => console.error('Admin email failed:', err));
 
     res.status(201).json({ bookingId, reference: ref, amount: deposit });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch { /* ignore */ }
     if (e.message === 'SLOT_TAKEN') return res.status(409).json({ error: 'Slot already reserved' });
     if (e.code === '23505') return res.status(409).json({ error: 'Slot already reserved' });
-    console.error("BOOKING ERROR:", e); // <--- This will show the exact DB error in Render logs if it fails
+    console.error("BOOKING ERROR:", e); 
     next(e);
   } finally {
     client.release();
