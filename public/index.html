@@ -137,6 +137,14 @@
         <div id="payment-methods">
           <!-- Populated by /js/booking.js -->
         </div>
+        
+        <!-- NEW: Payment Screenshot Upload -->
+        <div class="form-group mt-3 card" style="padding: 16px; border-color: var(--gold);">
+          <label class="label" for="payment-proof" style="color: var(--gold-hi);">Upload Payment Screenshot</label>
+          <p class="muted small mb-1">After transferring the deposit, please upload a screenshot of your receipt here.</p>
+          <input type="file" class="input" id="payment-proof" accept="image/*">
+        </div>
+
         <div class="flex-between mt-3">
           <button class="btn btn--ghost" id="btn-step-4-back">Back</button>
           <button class="btn btn--accent" id="btn-confirm-booking">Confirm Booking</button>
@@ -148,8 +156,7 @@
         <div class="text-center">
           <h2>Booking Received</h2>
           <p class="muted mt-2">
-            Your slot is held. Complete the payment using the details below,
-            and the studio will confirm your receipt by email.
+            Your slot is held. The studio will review your payment screenshot and confirm your receipt by email shortly.
           </p>
         </div>
         <div class="reference-box">
@@ -197,7 +204,7 @@
           <h4 style="color: var(--gold); margin-bottom: 8px;">Contact</h4>
           <p class="muted small">
             <!-- Replace the email and phone below with your actual details -->
-            <a href="ellajackson1321@gmail.com" class="muted">ellajackson1321@gmail.com</a><br>
+            <a href="mailto:ellajackson1321@gmail.com" class="muted">ellajackson1321@gmail.com</a><br>
             <a href="tel:+14782840345" class="muted">+1 478 284 0345</a>
           </p>
         </div>
@@ -232,6 +239,6 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
   
-  <script type="module" src="/js/booking.js?v=4"></script>
+  <script type="module" src="/js/booking.js?v=5"></script>
 </body>
 </html>
