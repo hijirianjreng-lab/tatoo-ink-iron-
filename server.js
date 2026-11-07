@@ -24,7 +24,6 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 /* ---------- Admin panel: private HTML served from a secret route ---------- */
 
-// Resolve the admin path once, at startup, and log it for diagnostics.
 const ADMIN_PATH = (process.env.ADMIN_PATH || 'admin-secret').trim();
 const ADMIN_FILE = path.join(__dirname, 'private', 'admin.html');
 
@@ -32,10 +31,8 @@ console.log('[admin] ADMIN_PATH =', JSON.stringify(ADMIN_PATH));
 console.log('[admin] ADMIN_FILE =', ADMIN_FILE);
 console.log('[admin] file exists =', fs.existsSync(ADMIN_FILE));
 
-// Block direct access to the private folder, regardless of what's inside.
 app.use('/private', (req, res) => res.status(404).end());
 
-// Serve the admin HTML only through the secret path.
 app.get(`/${ADMIN_PATH}`, (req, res) => {
   res.sendFile(ADMIN_FILE, (err) => {
     if (err) {
@@ -46,17 +43,14 @@ app.get(`/${ADMIN_PATH}`, (req, res) => {
 });
 
 /* ---------- Static public assets ---------- */
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ---------- Health ---------- */
-
 app.get('/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 
 /* ---------- Admin login ---------- */
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -67,11 +61,11 @@ const loginLimiter = rateLimit({
 app.post('/admin/login', loginLimiter, adminLogin);
 
 /* ---------- Admin-only: pending payments ---------- */
-
 app.get('/api/payments/pending', requireAdmin, async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT p.id, p.reference_number, p.amount, p.status, p.created_at,
+             p.proof_data, p.proof_mime_type,             /* <--- Added */
              b.customer_name, b.customer_email, b.slot_start,
              a.name AS artist_name,
              pm.name AS method_name
@@ -87,7 +81,6 @@ app.get('/api/payments/pending', requireAdmin, async (req, res, next) => {
 });
 
 /* ---------- API routers ---------- */
-
 app.use('/api/bookings', bookings);
 app.use('/api/payments', payments);
 app.use('/api/artists', artists);
@@ -98,7 +91,6 @@ app.use('/api/settings', adminSettings);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 /* ---------- Central error handler ---------- */
-
 app.use((err, req, res, next) => {
   console.error('[server error]', err);
   if (res.headersSent) return next(err);
@@ -106,7 +98,6 @@ app.use((err, req, res, next) => {
 });
 
 /* ---------- Pending-payment expiry job ---------- */
-
 async function expireStalePayments() {
   const hours = parseInt(process.env.PENDING_EXPIRY_HOURS || '24', 10);
   const cutoff = new Date(Date.now() - hours * 3600 * 1000).toISOString();
@@ -139,7 +130,6 @@ async function expireStalePayments() {
 setInterval(() => expireStalePayments().catch(console.error), 15 * 60 * 1000);
 
 /* ---------- Startup ---------- */
-
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 init()
