@@ -313,19 +313,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = $('customer-email')?.value.trim();
     const phone = $('customer-phone')?.value.trim();
     const refFile = $('booking-reference')?.files[0];
+    const proofFile = $('payment-proof')?.files[0];
 
     if (!name) return toast('Please enter your name.', 'error');
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast('Please enter a valid email.', 'error');
     if (!state.selectedArtist) return toast('Please choose an artist.', 'error');
     if (!state.selectedSlot) return toast('Please choose a time slot.', 'error');
     if (!state.selectedMethod) return toast('Please choose a payment method.', 'error');
+    
+    // Enforce screenshot upload
+    if (!proofFile) return toast('Please upload a screenshot of your payment receipt.', 'error');
 
     const btn = $('btn-confirm-booking');
     if (!btn) return;
     btn.disabled = true;
     btn.textContent = 'Booking…';
 
-    // Create FormData to send text fields AND the file
     const formData = new FormData();
     formData.append('artist_id', state.selectedArtist.id);
     formData.append('customer_name', name);
@@ -335,11 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
     formData.append('slot_end', state.selectedSlot.slot_end);
     formData.append('payment_method_id', state.selectedMethod.id);
     if (refFile) formData.append('reference', refFile);
+    formData.append('screenshot', proofFile);
 
     try {
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        body: formData // Notice: NO Content-Type header. FormData sets it automatically.
+        body: formData // NO Content-Type header
       });
 
       const data = await res.json();
