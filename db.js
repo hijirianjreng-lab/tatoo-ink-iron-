@@ -62,18 +62,20 @@ export async function init() {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS bookings (
-      id             SERIAL PRIMARY KEY,
-      artist_id      INTEGER NOT NULL REFERENCES artists(id),
-      customer_name  TEXT NOT NULL,
-      customer_email TEXT NOT NULL,
-      customer_phone TEXT,
-      slot_start     TIMESTAMPTZ NOT NULL,
-      slot_end       TIMESTAMPTZ NOT NULL,
-      status         TEXT NOT NULL DEFAULT 'pending_payment',
-      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (artist_id, slot_start)
-    );
+      CREATE TABLE IF NOT EXISTS bookings (
+    id SERIAL PRIMARY KEY,
+    artist_id INTEGER NOT NULL REFERENCES artists(id),
+    customer_name TEXT NOT NULL,
+    customer_email TEXT NOT NULL,
+    customer_phone TEXT,
+    slot_start TIMESTAMPTZ NOT NULL,
+    slot_end TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending_payment',
+    reference_image BYTEA,           -- NEW: For client reference images
+    reference_mime_type TEXT,        -- NEW: For client reference images
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (artist_id, slot_start)
+  );
   `);
 
   await pool.query(`
