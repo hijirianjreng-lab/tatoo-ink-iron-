@@ -2,6 +2,7 @@
 import express from 'express';
 import pool from '../db.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
+import { portfolioUpload } from '../services/uploads.js';
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -64,16 +65,53 @@ router.delete('/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* ---------- Portfolio ---------- */
+
+// Fixed: Used `rows` instead of `row`, fixed the `$1` placeholder.
 router.get('/:id/portfolio', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM artist_portfolio WHERE artist_id = $1 ORDER BY sort_order ASC',
+      `SELECT id, caption, sort_order,
+              CASE WHEN image_data IS NOT NULL THEN '/api/portfolio/' || id || '/image'
+              ELSE image_url END AS image_path 
+        FROM artist_portfolio WHERE artist_id = $1 ORDER BY sort_order ASC`, 
       [req.params.id]
     );
     res.json({ portfolio: rows });
   } catch (e) { next(e); }
 });
 
+// Restored: The missing file upload route!
+router.post('/:id/portfolio/upload', portfolioUpload.single('image'), async (req, res, next) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const artistCheck = await pool.query('SELECT 1 FROM artists WHERE id = $1', [req.params.id]);
+  if (!artistCheck.rowCount) return res.status(404).json({ error: 'Artist not found' });
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO artist_portfolio (artist_id, image_data, mime_type, caption, sort_order)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, caption, sort_order, created_at`,
+      [
+        req.params.id,
+        req.file.buffer,
+        req.file.mimetype,
+        req.body.caption || null,
+        Number(req.body.sort_order) || 0
+      ]
+    );
+    const row = rows[0];
+    res.status(201).json({
+      id: row.id,
+      caption: row.caption,
+      sort_order: row.sort_order,
+      image_path: `/api/portfolio/${row.id}/image`
+    });
+  } catch (e) { next(e); }
+});
+
+// Add an image via URL (fallback)
 router.post('/:id/portfolio', async (req, res, next) => {
   const { image_url, caption, sort_order } = req.body;
   if (!image_url) return res.status(400).json({ error: 'image_url required' });
