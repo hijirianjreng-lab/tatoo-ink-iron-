@@ -7,6 +7,24 @@ import { sendReceiptEmail } from '../services/brevo.js';
 
 const router = express.Router();
 
+// --- NEW: Serve the payment screenshot to the admin panel ---
+router.get('/proof/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT proof_data, proof_mime_type FROM payments WHERE id = $1', 
+      [req.params.id]
+    );
+    
+    if (!rows.length || !rows[0].proof_data) {
+      return res.status(404).send('No screenshot uploaded for this payment.');
+    }
+    
+    res.set('Content-Type', rows[0].proof_mime_type || 'image/jpeg');
+    res.send(rows[0].proof_data);
+  } catch (e) { next(e); }
+});
+
+// --- Confirm Payment ---
 router.post('/:id/confirm', requireAdmin, async (req, res, next) => {
   const { note } = req.body;
   const client = await pool.connect();
@@ -37,7 +55,6 @@ router.post('/:id/confirm', requireAdmin, async (req, res, next) => {
     await client.query(`UPDATE bookings SET status='confirmed' WHERE id=$1`, [payment.booking_id]);
     await client.query('COMMIT');
 
-    // Fire-and-forget email; failure does NOT roll back the confirmation
     try {
       const pdf = await buildReceiptPdf({
         reference: payment.reference_number,
@@ -76,6 +93,7 @@ router.post('/:id/confirm', requireAdmin, async (req, res, next) => {
   }
 });
 
+// --- Cancel Payment ---
 router.post('/:id/cancel', requireAdmin, async (req, res, next) => {
   try {
     const r = await pool.query(`
