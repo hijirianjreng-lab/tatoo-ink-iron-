@@ -49,7 +49,7 @@ export function buildReceiptPdf(data) {
 
       doc.moveDown(0.5);
       doc.fontSize(8).fillColor('#999999')
-         .text('Ink & Iron Tattoo Studio', { align: 'center' });
+         .text('breezy Ink & Iron Tattoo Studio', { align: 'center' });
 
       doc.end();
     } catch (err) {
